@@ -50,7 +50,6 @@ bool L3G4200D::begin(l3g4200d_dps_t scale, l3g4200d_odrbw_t odrbw)
 
     // Check L3G4200D Who Am I Register
     uint8_t whoami = 0x00;
-    printf("Asking who am I: %d\n", whoami);
     readRegister(L3G4200D_REG_WHO_AM_I, whoami);
     if (whoami != 0xD3)
     {
@@ -63,16 +62,16 @@ bool L3G4200D::begin(l3g4200d_dps_t scale, l3g4200d_odrbw_t odrbw)
     uint8_t reg1 = 0x00;
     reg1 |= 0x0F; // Enable all axis and setup normal mode
     reg1 |= (odrbw << 4); // Set output data rate & bandwidh
-    writeRegister(L3G4200D_REG_CTRL_REG1, 0x0F);
+    writeRegister(L3G4200D_REG_CTRL_REG1, reg1);
 
     // Disable high pass filter
-    //writeRegister(L3G4200D_REG_CTRL_REG2, 0x00);
+    writeRegister(L3G4200D_REG_CTRL_REG2, 0x00);
 
     // Generata data ready interrupt on INT2
     //writeRegister8(L3G4200D_REG_CTRL_REG3, 0x08);
 
     // Set full scale selection in continous mode
-    //writeRegister8(L3G4200D_REG_CTRL_REG4, scale << 4);
+    writeRegister(L3G4200D_REG_CTRL_REG4, scale << 4);
 
     switch(scale)
     {

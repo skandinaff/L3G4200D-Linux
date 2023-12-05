@@ -1,11 +1,3 @@
-/*
-    L3G4200D Triple Axis Gyroscope: Pitch, Roll and Yaw.
-    Read more: http://www.jarzebski.pl/arduino/czujniki-i-sensory/3-osiowy-zyroskop-l3g4200d.html
-    GIT: https://github.com/jarzebski/Arduino-L3G4200D
-    Web: http://www.jarzebski.pl
-    (c) 2014 by Korneliusz Jarzebski
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -18,7 +10,7 @@ L3G4200D gyroscope;
 
 struct timespec start, end;
 double elapsed;
-float timeStep = 0.25;
+float timeStep = 0.2;
 
 // Pitch, Roll and Yaw values
 float pitch = 0;
@@ -36,7 +28,7 @@ void setup()
   printf("Initialize L3G4200D\n");
 
   // Set scale 2000 dps and 400HZ Output data rate (cut-off 50)
-  while(!gyroscope.begin(L3G4200D_SCALE_250DPS, L3G4200D_DATARATE_100HZ_12_5))
+  while(!gyroscope.begin(L3G4200D_SCALE_2000DPS, L3G4200D_DATARATE_400HZ_50))
   {
     printf("Could not find a valid L3G4200D sensor, check wiring!");
     usleep(500000); 
@@ -56,8 +48,6 @@ void loop()
     // Read normalized values
     norm = gyroscope.readNormalize();
     raw = gyroscope.readRaw();
-    reading_num ++;
-    printf("Reading number: %d\n", reading_num);
     // Calculate Pitch, Roll and Yaw
     pitch = pitch + norm.YAxis * timeStep;
     roll = roll + norm.XAxis * timeStep;

@@ -22,27 +22,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "L3G4200D.h"
 
 
-
-uint8_t L3G4200D::i2cread(void)
-{
-    uint8_t data;
-    if (read(i2cFile, &data, 1) != 1) {
-        perror("Failed to read from the i2c bus");
-        exit(1);
-    }
-    return data;
-}
-
-
-void L3G4200D::i2cwrite(uint8_t x)
-{
-    if (write(i2cFile, &x, 1) != 1) {
-        perror("Failed to write to the i2c bus");
-        exit(1);
-    }
-}
-
-
 bool L3G4200D::begin(l3g4200d_dps_t scale, l3g4200d_odrbw_t odrbw)
 {
     // Reset calibrate values
@@ -64,9 +43,15 @@ bool L3G4200D::begin(l3g4200d_dps_t scale, l3g4200d_odrbw_t odrbw)
         exit(1);
     }
 
+    if (ioctl(i2cFile, I2C_SLAVE, L3G4200D_ADDRESS) < 0) {
+        std::cerr << "Failed to acquire bus access and/or talk to slave." << std::endl;
+        return false;
+    }
+
     // Check L3G4200D Who Am I Register
-    uint8_t whoami;
-    whoami = fastRegister8(L3G4200D_REG_WHO_AM_I);
+    uint8_t whoami = 0x00;
+    printf("Asking who am I: %d\n", whoami);
+    readRegister(L3G4200D_REG_WHO_AM_I, whoami);
     if (whoami != 0xD3)
     {
 	    return false;
@@ -78,10 +63,10 @@ bool L3G4200D::begin(l3g4200d_dps_t scale, l3g4200d_odrbw_t odrbw)
     uint8_t reg1 = 0x00;
     reg1 |= 0x0F; // Enable all axis and setup normal mode
     reg1 |= (odrbw << 4); // Set output data rate & bandwidh
-    writeRegister8(L3G4200D_REG_CTRL_REG1, reg1);
+    writeRegister(L3G4200D_REG_CTRL_REG1, 0x0F);
 
     // Disable high pass filter
-    writeRegister8(L3G4200D_REG_CTRL_REG2, 0x00);
+    //writeRegister(L3G4200D_REG_CTRL_REG2, 0x00);
 
     // Generata data ready interrupt on INT2
     //writeRegister8(L3G4200D_REG_CTRL_REG3, 0x08);
@@ -105,7 +90,7 @@ bool L3G4200D::begin(l3g4200d_dps_t scale, l3g4200d_odrbw_t odrbw)
     }
 
     // Boot in normal mode, disable FIFO, HPF disabled
-    writeRegister8(L3G4200D_REG_CTRL_REG5, 0x00);
+    writeRegister(L3G4200D_REG_CTRL_REG5, 0x00);
 
     return true;
 }
@@ -113,14 +98,16 @@ bool L3G4200D::begin(l3g4200d_dps_t scale, l3g4200d_odrbw_t odrbw)
 // Get current scale
 l3g4200d_dps_t L3G4200D::getScale(void)
 {
-    return (l3g4200d_dps_t)((readRegister8(L3G4200D_REG_CTRL_REG4) >> 4) & 0x03);
+    uint8_t value;
+    return (l3g4200d_dps_t)((readRegister(L3G4200D_REG_CTRL_REG4,value) >> 4) & 0x03);
 }
 
 
 // Get current output data range and bandwidth
 l3g4200d_odrbw_t L3G4200D::getOdrBw(void)
 {
-    return (l3g4200d_odrbw_t)((readRegister8(L3G4200D_REG_CTRL_REG1) >> 4) & 0x0F);
+    uint8_t value;
+    return (l3g4200d_odrbw_t)((readRegister(L3G4200D_REG_CTRL_REG1, value) >> 4) & 0x0F);
 }
 
 // Calibrate algorithm
@@ -202,58 +189,32 @@ void L3G4200D::setThreshold(uint8_t multiple)
     actualThreshold = multiple;
 }
 
-// Write 8-bit to register
-void L3G4200D::writeRegister8(uint8_t reg, uint8_t value)
-{
-
-    if (ioctl(i2cFile, I2C_SLAVE, L3G4200D_ADDRESS) < 0) {
-        perror("Failed to acquire bus access and/or talk to slave");
-        exit(1);
-    }
-
-    i2cwrite(reg);
-    i2cwrite(value);
-
-    //TODO: there was End Trasmission 
-}
-
 // Fast read 8-bit from register
-uint8_t L3G4200D::fastRegister8(uint8_t reg)
-{
-    uint8_t ret_val;
-    if (ioctl(i2cFile, I2C_SLAVE, L3G4200D_ADDRESS) < 0) {
-        perror("Failed to acquire bus access and/or talk to slave");
-        exit(1);
+bool L3G4200D::writeRegister(uint8_t reg, uint8_t value) {
+    uint8_t buffer[2];
+    buffer[0] = reg;
+    buffer[1] = value;
+
+    if (write(i2cFile, buffer, 2) != 2) {
+        std::cerr << "Failed to write to the I2C bus." << std::endl;
+        return false;
     }
 
-    i2cwrite(reg);
-
-    if (read(i2cFile, &ret_val, 1) != 1) {
-        perror("Failed to read from the i2c bus");
-        exit(1);
-    }
-
-    return ret_val;
+    return true;
 }
 
-// Read 8-bit from register
-uint8_t L3G4200D::readRegister8(uint8_t reg)
-{
-    if (ioctl(i2cFile, I2C_SLAVE, L3G4200D_ADDRESS) < 0) {
-        perror("Failed to acquire bus access and/or talk to slave");
-        exit(1);
+bool L3G4200D::readRegister(uint8_t reg, uint8_t& value) {
+    if (write(i2cFile, &reg, 1) != 1) {
+        std::cerr << "Failed to write to the I2C bus." << std::endl;
+        return false;
     }
 
-    i2cwrite(reg);
-
-    usleep(10000); 
-
-    if (read(i2cFile, &reg, 1) != 1) {
-        perror("Failed to read from the i2c bus");
-        exit(1);
+    if (read(i2cFile, &value, 1) != 1) {
+        std::cerr << "Failed to read from the I2C bus." << std::endl;
+        return false;
     }
 
-    return reg;
+    return true;
 }
 // L3G4200D Temperature sensor output change vs temperature: -1digit/degrCelsius (data representation: 2's complement).
 // Value represents difference respect to a reference not specified value.
@@ -263,32 +224,27 @@ uint8_t L3G4200D::readRegister8(uint8_t reg)
 // Finally, you can use this info to compensate drifts due to temperature changes.
 uint8_t L3G4200D::readTemperature(void)
 {
-    return readRegister8(L3G4200D_REG_OUT_TEMP);
+    uint8_t value;
+    return readRegister(L3G4200D_REG_OUT_TEMP, value);
 }
 
 // Read raw values
 Vector L3G4200D::readRaw()
 {
+    uint8_t buffer[6];
 
-
-    uint8_t reg = L3G4200D_REG_OUT_X_L | (1 << 7);
-
-    if (ioctl(i2cFile, I2C_SLAVE, L3G4200D_ADDRESS) < 0) {
-        perror("Failed to acquire bus access and/or talk to slave");
-        exit(1);
+    if (readRegister(L3G4200D_REG_OUT_X_L, buffer[0]) && // OUT_X_L
+        readRegister(L3G4200D_REG_OUT_X_H, buffer[1]) && // OUT_X_H
+        readRegister(L3G4200D_REG_OUT_Y_L, buffer[2]) && // OUT_Y_L
+        readRegister(L3G4200D_REG_OUT_Y_H, buffer[3]) && // OUT_Y_H
+        readRegister(L3G4200D_REG_OUT_Z_L, buffer[4]) && // OUT_Z_L
+        readRegister(L3G4200D_REG_OUT_Z_H, buffer[5])    // OUT_Z_H
+    ) {
+        r.XAxis = (buffer[1] << 8) | buffer[0];
+        r.YAxis = (buffer[3] << 8) | buffer[2];
+        r.ZAxis = (buffer[5] << 8) | buffer[4];
+        
     }
-
-    i2cwrite(reg);
-
-
-    if (read(i2cFile, &buf, 6) != 6) {
-        perror("Failed to read from the i2c bus");
-        exit(1);
-    }
-
-    r.XAxis = (int16_t)(buf[1] << 8 | buf[0]);
-    r.YAxis = (int16_t)(buf[3] << 8 | buf[2]);
-    r.ZAxis = (int16_t)(buf[5] << 8 | buf[4]);
 
     return r;
 }

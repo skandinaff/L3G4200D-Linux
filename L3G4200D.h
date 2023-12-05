@@ -27,6 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <unistd.h>
 #include <cstdint>
 #include <time.h>
+#include <iostream>
 
 #include <sys/ioctl.h>
 #include <linux/i2c-dev.h>
@@ -105,14 +106,14 @@ typedef enum
 class L3G4200D
 {
     public:
-        uint8_t i2cread(void);
-        void i2cwrite(uint8_t x);
         bool begin(l3g4200d_dps_t scale = L3G4200D_SCALE_2000DPS, l3g4200d_odrbw_t odrbw = L3G4200D_DATARATE_100HZ_12_5);
         l3g4200d_dps_t getScale(void);
         l3g4200d_odrbw_t getOdrBw(void);
 
         void calibrate(uint8_t samples = 50);
         void setThreshold(uint8_t multiple = 1);
+        bool writeRegister(uint8_t reg, uint8_t value);
+        bool readRegister(uint8_t reg, uint8_t &value);
         uint8_t getThreshold(void);
 
         Vector readRaw(void);
@@ -132,10 +133,7 @@ class L3G4200D
         float thresholdY;
         float thresholdZ;
 
-        void writeRegister8(uint8_t reg, uint8_t value);
-        uint8_t readRegister8(uint8_t reg);
-        uint8_t fastRegister8(uint8_t reg);
-        int i2cFile = -1;
+        int i2cFile;
         uint8_t buf[6];
 };
 

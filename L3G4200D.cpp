@@ -140,16 +140,16 @@ void L3G4200D::calibrate(uint8_t samples)
     // Read n-samples
     for (uint8_t i = 0; i < samples; ++i)
     {
-	readRaw();
-	sumX += r.XAxis;
-	sumY += r.YAxis;
-	sumZ += r.ZAxis;
+        readRaw();
+        sumX += r.XAxis;
+        sumY += r.YAxis;
+        sumZ += r.ZAxis;
 
-	sigmaX += r.XAxis * r.XAxis;
-	sigmaY += r.YAxis * r.YAxis;
-	sigmaZ += r.ZAxis * r.ZAxis;
-	
-	usleep(500);
+        sigmaX += r.XAxis * r.XAxis;
+        sigmaY += r.YAxis * r.YAxis;
+        sigmaZ += r.ZAxis * r.ZAxis;
+        
+        usleep(5000);
     }
 
     // Calculate delta vectors
@@ -285,7 +285,6 @@ Vector L3G4200D::readRaw()
         perror("Failed to read from the i2c bus");
         exit(1);
     }
-    
 
     r.XAxis = (int16_t)(buf[1] << 8 | buf[0]);
     r.YAxis = (int16_t)(buf[3] << 8 | buf[2]);
